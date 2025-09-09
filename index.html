@@ -1,67 +1,136 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Juego de Nombres</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    h1 { color: #333; }
-    input, button { padding: 10px; font-size: 16px; margin: 10px; }
-    #resultado { margin-top: 20px; font-size: 20px; font-weight: bold; color: darkblue; }
+    body{font-family:Arial,Helvetica,sans-serif;text-align:center;padding:30px;}
+    h1{font-size:34px;margin-bottom:6px;}
+    p{color:#444}
+    input{padding:10px;font-size:16px;width:320px;max-width:80%}
+    button{padding:10px 18px;font-size:16px;margin-left:8px}
+    #resultado{margin-top:20px;font-size:20px;color:#0b5;font-weight:700}
+    #error{margin-top:14px;color:#c33}
+    footer{margin-top:40px;color:#888;font-size:13px}
   </style>
 </head>
 <body>
   <h1>Juego de Nombres</h1>
   <p>Escribe tu nombre para participar:</p>
 
-  <input type="text" id="miNombre" placeholder="Tu nombre aquí">
-  <button onclick="sortear()">¡Dame mi nombre!</button>
-  <div id="resultado"></div>
+  <input id="miNombre" placeholder="Tu nombre aquí" autocomplete="off" />
+  <button id="btnSorteo">¡Dame mi nombre!</button>
+  <button id="btnTest">Comprobar JS</button>
 
-  <script>
-    // 👉 Lista de nombres (modifícala con los participantes)
-    const nombres = [
-      "Adrian", "Gianella", "Gisella", "Maricrys", "Alveiro", "Javier",
-      "Mafe", "Carol", "Alejo", "Norys", "Ligia", "Merlyn",
-      "Diana", "Camilo"
-    ];
+  <div id="resultado" aria-live="polite"></div>
+  <div id="error" aria-live="polite"></div>
 
-    // Para guardar qué nombre le tocó a cada jugador
-    const asignaciones = JSON.parse(localStorage.getItem("asignaciones")) || {};
+  <footer>
+    Si no funciona, abre la consola (F12) y copia el error aquí en el chat.
+  </footer>
 
-    function sortear() {
-      const miNombre = document.getElementById("miNombre").value.trim();
-      const resultadoDiv = document.getElementById("resultado");
+<script>
+/* -------------------------
+  Lista de participantes
+  Edita aquí los nombres (máx 20)
+---------------------------- */
+const nombresOriginal = [
+  "Adrian","Gianella","Gisella","Maricrys","Alveiro","Javier",
+  "Mafe","Carol","Alejo","Norys","Ligia","Merlyn",
+  "Diana","Camilo"
+];
 
-      if (!miNombre) {
-        resultadoDiv.textContent = "⚠️ Debes escribir tu nombre.";
-        return;
-      }
+// normaliza: conserva una versión "display" y una versión "llave" (lowercase trimmed)
+const nombres = nombresOriginal.map(n => ({ key: n.trim().toLowerCase(), display: n.trim() }));
 
-      // Si ya jugó antes, se le muestra lo mismo
-      if (asignaciones[miNombre]) {
-        resultadoDiv.textContent = `🎉 Ya jugaste antes. Te salió: ${asignaciones[miNombre]}`;
-        return;
-      }
+// estado persistente: objeto { jugadorKey: asignadoDisplay }
+let asignaciones = {};
+try {
+  const raw = localStorage.getItem('asignaciones');
+  if(raw) asignaciones = JSON.parse(raw);
+} catch(e){
+  console.error('Error leyendo localStorage:', e);
+  asignaciones = {};
+}
 
-      // Filtramos para que no se asigne a sí mismo
-      const posibles = nombres.filter(n => n !== miNombre && !Object.values(asignaciones).includes(n));
+// helpers
+function limpiarTexto(s){ return String(s||'').trim(); }
+function keyOf(name){ return limpiarTexto(name).toLowerCase(); }
 
-      if (posibles.length === 0) {
-        resultadoDiv.textContent = "😮 Ya no quedan nombres disponibles.";
-        return;
-      }
+// botón de prueba
+document.getElementById('btnTest').addEventListener('click', function(){
+  console.log('Prueba JS: nombres cargados =', nombres.map(x=>x.display));
+  alert('JS ejecutándose. Si esto aparece, el script corre correctamente.');
+});
 
-      // Elegir un nombre al azar
-      const elegido = posibles[Math.floor(Math.random() * posibles.length)];
-      asignaciones[miNombre] = elegido;
+// función principal
+document.getElementById('btnSorteo').addEventListener('click', sortear);
 
-      // Guardamos en el navegador
-      localStorage.setItem("asignaciones", JSON.stringify(asignaciones));
+function mostrarMensaje(texto, esError){
+  const r = document.getElementById('resultado');
+  const e = document.getElementById('error');
+  if(esError){
+    e.textContent = texto;
+    r.textContent = '';
+  } else {
+    r.textContent = texto;
+    e.textContent = '';
+  }
+}
 
-      resultadoDiv.textContent = `🎁 Te salió: ${elegido}`;
+function sortear(){
+  try{
+    mostrarMensaje('', false); // limpiar
+    const rawNombre = document.getElementById('miNombre').value;
+    const nombre = limpiarTexto(rawNombre);
+    if(!nombre){
+      mostrarMensaje('⚠️ Escribe tu nombre primero.', true);
+      return;
     }
-  </script>
+
+    const miKey = keyOf(nombre);
+
+    // si ya tengo asignación registrada para este jugador (key exacta)
+    if(asignaciones[miKey]){
+      mostrarMensaje('🎉 Ya jugaste antes. Te salió: ' + asignaciones[miKey], false);
+      console.log('Jugador ya tenía asignación:', miKey, asignaciones[miKey]);
+      return;
+    }
+
+    // construir lista de posibles: nombres que no sean el propio y no hayan sido usados
+    const usados = Object.values(asignaciones).map(v => v.toLowerCase());
+    const posibles = nombres
+      .filter(n => n.key !== miKey)          // no mi propio nombre
+      .filter(n => !usados.includes(n.display.toLowerCase())); // no usados
+
+    console.log('miKey=', miKey, 'usados=', usados, 'posibles=', posibles.map(p=>p.display));
+
+    if(posibles.length === 0){
+      mostrarMensaje('😮 Ya no quedan nombres disponibles.', true);
+      return;
+    }
+
+    // elegir aleatorio
+    const elegido = posibles[Math.floor(Math.random() * posibles.length)];
+
+    // guardar asignación: clave = jugadorKey, valor = elegido.display
+    asignaciones[miKey] = elegido.display;
+    try {
+      localStorage.setItem('asignaciones', JSON.stringify(asignaciones));
+    } catch(saveErr){
+      console.warn('No se pudo persistir en localStorage:', saveErr);
+    }
+
+    mostrarMensaje('🎁 Te tocó: ' + elegido.display, false);
+    console.log('Asignado:', miKey, '→', elegido.display);
+  } catch(err){
+    console.error('Error en sortear():', err);
+    mostrarMensaje('❌ Ocurrió un error. Abre la consola y copia el mensaje aquí.', true);
+  }
+}
+</script>
 </body>
 </html>
+
 
