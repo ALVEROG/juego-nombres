@@ -13,63 +13,56 @@
 <body>
   <h1>Juego de Nombres</h1>
   <p>Escribe tu nombre para participar:</p>
+
   <input type="text" id="miNombre" placeholder="Tu nombre aquí">
   <button onclick="sortear()">¡Dame mi nombre!</button>
   <div id="resultado"></div>
 
   <script>
-    // 👉 Aquí defines los nombres participantes (máx 20)
+    // 👉 Lista de nombres (modifícala con los participantes)
     const nombres = [
-      "Adrian", "Gianella", "Gisella", "Maricrys", "Alveiro", "Javier", "Mafe"
-      "Carol", "Alejo", "Norys", "Ligia", "Merlyn", "Diana", "Camilo"
+      "Adrian", "Gianella", "Gisella", "Maricrys", "Alveiro", "Javier",
+      "Mafe", "Carol", "Alejo", "Norys", "Ligia", "Merlyn",
+      "Diana", "Camilo"
     ];
+
+    // Para guardar qué nombre le tocó a cada jugador
+    const asignaciones = JSON.parse(localStorage.getItem("asignaciones")) || {};
 
     function sortear() {
       const miNombre = document.getElementById("miNombre").value.trim();
       const resultadoDiv = document.getElementById("resultado");
 
       if (!miNombre) {
-        resultadoDiv.innerText = "⚠️ Por favor escribe tu nombre primero.";
+        resultadoDiv.textContent = "⚠️ Debes escribir tu nombre.";
         return;
       }
 
-      // Claves en localStorage
-      const claveJugador = "resultado_" + miNombre.toLowerCase();
-      const claveUsados = "usados_global";
-
-      // Verificar si ya jugó antes
-      const asignado = localStorage.getItem(claveJugador);
-      if (asignado) {
-        resultadoDiv.innerText = "✅ Ya tu nombre salió y te tocó: " + asignado;
+      // Si ya jugó antes, se le muestra lo mismo
+      if (asignaciones[miNombre]) {
+        resultadoDiv.textContent = `🎉 Ya jugaste antes. Te salió: ${asignaciones[miNombre]}`;
         return;
       }
 
-      // Recuperar lista de usados
-      let usados = JSON.parse(localStorage.getItem(claveUsados) || "[]");
-
-      // Filtrar nombres válidos (sin el propio y sin los ya usados)
-      const posibles = nombres.filter(n =>
-        n.toLowerCase() !== miNombre.toLowerCase() &&
-        !usados.includes(n)
-      );
+      // Filtramos para que no se asigne a sí mismo
+      const posibles = nombres.filter(n => n !== miNombre && !Object.values(asignaciones).includes(n));
 
       if (posibles.length === 0) {
-        resultadoDiv.innerText = "⚠️ Ya no quedan nombres disponibles.";
+        resultadoDiv.textContent = "😮 Ya no quedan nombres disponibles.";
         return;
       }
 
-      // Escoger aleatorio
+      // Elegir un nombre al azar
       const elegido = posibles[Math.floor(Math.random() * posibles.length)];
+      asignaciones[miNombre] = elegido;
 
-      // Guardar resultados
-      localStorage.setItem(claveJugador, elegido);
-      usados.push(elegido);
-      localStorage.setItem(claveUsados, JSON.stringify(usados));
+      // Guardamos en el navegador
+      localStorage.setItem("asignaciones", JSON.stringify(asignaciones));
 
-      // Mostrar resultado
-      resultadoDiv.innerText = "🎉 Te tocó: " + elegido;
+      resultadoDiv.textContent = `🎁 Te salió: ${elegido}`;
     }
   </script>
 </body>
 </html>
+
 
